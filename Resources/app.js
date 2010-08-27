@@ -6,18 +6,32 @@ QuickList.database = (function() {
     var db;
     try {
 	db = Titanium.Database.install('../quicklist.db', 'quicklist');
+	db.execute('CREATE TABLE IF NOT EXISTS DONE (title TEXT)');
+	db.execute('CREATE TABLE IF NOT EXISTS TODO (title TEXT)');
     } catch (ex) {
 	alert(ex);
     }
     return db;
 }());
 QuickList.Done = {};
-
+QuickList.Done.data = (function() {
+    var db, rows, data;
+    data = [];
+    db = QuickList.database;
+    if (db) {
+	rows = db.execute('SELECT * FROM DONE');
+	while (rows.isValidRow()) {
+	    data.push({title: rows.field(0), color: '#000'});
+	    rows.next();
+	}
+	rows.close();
+    }
+    return data;
+}());
 QuickList.Done.table = (function() {
     var view, data;
-    data = [];
 
-    view = Titanium.UI.createTableView( { data: data });
+    view = Titanium.UI.createTableView( { data: QuickList.Done.data });
 
     return view;
 }());
@@ -116,7 +130,7 @@ QuickList.Todo.table = (function() {
 QuickList.Todo.add = function(text) {
     QuickList.Todo.data.push({title: text});
     QuickList.Todo.table.appendRow({title:text, color: '#000'});
-    QuickList.Todo.save();
+    QuickList.database.execute('INSERT INTO TODO (title) VALUES ("' + text + '")');
 };
 QuickList.Todo.complete = function(index, item) {
     var dialog, title, index;
@@ -131,10 +145,11 @@ QuickList.Todo.complete = function(index, item) {
 
     dialog.addEventListener('click', function(event) {
 	if (event.index === 0) {
+	    QuickList.database.execute('DELETE FROM TODO WHERE title = "' + title + '"');
+	    QuickList.database.execute('INSERT INTO DONE (title) VALUES ("' + title + '")');
 	    QuickList.Done.table.appendRow({title: title});
 	    QuickList.Todo.data.splice(index + 1, 1);
 	    QuickList.Todo.table.deleteRow(index);
-	    QuickList.Todo.save();
 	}
     });
 
