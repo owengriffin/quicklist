@@ -80,7 +80,9 @@ QuickList.Todo.add = function(text) {
     QuickList.Todo.table.appendRow({title:text, color: '#000'});
 };
 QuickList.Todo.complete = function(index, item) {
-    var dialog;
+    var dialog, title;
+
+    title = item + '';
 
     dialog = Titanium.UI.createAlertDialog({
 	title: 'Confirmation',
@@ -90,7 +92,7 @@ QuickList.Todo.complete = function(index, item) {
 
     dialog.addEventListener('click', function(event) {
 	if (event.index === 0) {
-	    QuickList.Done.table.appendRow({title: item});
+	    QuickList.Done.table.appendRow({title: title});
 	    QuickList.Todo.table.deleteRow(index);
 	}
     });
