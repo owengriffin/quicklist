@@ -2,7 +2,17 @@
 Titanium.UI.setBackgroundColor('#000');
 
 var QuickList = {};
+QuickList.database = (function() { 
+    var db;
+    try {
+	db = Titanium.Database.install('../quicklist.db', 'quicklist');
+    } catch (ex) {
+	alert(ex);
+    }
+    return db;
+}());
 QuickList.Done = {};
+
 QuickList.Done.table = (function() {
     var view, data;
     data = [];
@@ -30,6 +40,33 @@ QuickList.Done.tab = (function() {
 }());
 
 QuickList.Todo = {};
+QuickList.Todo.data = (function() {
+    var db, rows, data;
+    data = [];
+    db = QuickList.database;
+    if (db) {
+	rows = db.execute('SELECT * FROM TODO');
+	while (rows.isValidRow()) {
+	    data.push({title: rows.field(0), color: '#000'});
+	    rows.next();
+	}
+	rows.close();
+    }
+    return data;
+}());
+QuickList.Todo.save = function() {
+    var db, index;
+
+    alert('Saving database');
+
+    db = QuickList.database;
+    db.execute('DELETE FROM TODO');
+    
+    for (index = 0; index < QuickList.Todo.data.length; index ++) {
+	item = QuickList.Todo.data[index];
+	db.execute('INSERT INTO TODO VALUES("' + item.title + '")');
+    }
+};
 QuickList.Todo.table = (function() {
     var view, data, add;
     
@@ -64,7 +101,7 @@ QuickList.Todo.table = (function() {
 	return { view: view, button: button, textfield: textfield };
     }());
 
-    data = [add.view];
+    data = [add.view].concat(QuickList.Todo.data);
 
     view = Titanium.UI.createTableView( { data: data , top: 5});
     view.addEventListener('click', function(event) {
@@ -77,10 +114,12 @@ QuickList.Todo.table = (function() {
     return view;
 }());
 QuickList.Todo.add = function(text) {
+    QuickList.Todo.data.push({title: text});
     QuickList.Todo.table.appendRow({title:text, color: '#000'});
+    QuickList.Todo.save();
 };
 QuickList.Todo.complete = function(index, item) {
-    var dialog, title;
+    var dialog, title, index;
 
     title = item + '';
 
@@ -93,7 +132,9 @@ QuickList.Todo.complete = function(index, item) {
     dialog.addEventListener('click', function(event) {
 	if (event.index === 0) {
 	    QuickList.Done.table.appendRow({title: title});
+	    QuickList.Todo.data.splice(index + 1, 1);
 	    QuickList.Todo.table.deleteRow(index);
+	    QuickList.Todo.save();
 	}
     });
 
@@ -125,8 +166,12 @@ QuickList.init = function() {
     tabGroup.addTab(QuickList.Todo.tab);  
     tabGroup.addTab(QuickList.Done.tab);  
     tabGroup.open();
+    if (!QuickList.database) {
+	alert('Unable to load database');
+    }
 };
 
 (function() {
     QuickList.init();
+    
 }());
